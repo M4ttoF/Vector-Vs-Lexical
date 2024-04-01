@@ -38,17 +38,24 @@ def tfidf10(term, corpus):
 # Get 10 most similar with Word2Vec
 def w2v(vocab, corpus, vecSize, window):
     tok_corpus = [word_tokenize(s.lower()) for s in corpus]  # Tokenize and lowercase
-    wv_model = Word2Vec(sentences=tok_corpus, vector_size=vecSize, window=window, min_count=1, epochs=2000, workers=10)
+    wv_model = Word2Vec(sentences=tok_corpus, vector_size=vecSize, window=window, min_count=1, epochs=1000, workers=10)
 
     w2vList = {}
 
+    knownWords=[]
     for word in vocab:
         if word in wv_model.wv:
+            knownWords.append(word)
+
+    for word in knownWords:
+        if word in wv_model.wv:
             sim = []
-            for word_ in vocab:
-                if word == word_:
+            for word2 in knownWords:
+                if word == word2:
                     continue
-                sim.append((cosine_similarity([wv_model.wv[word]], [wv_model.wv[word_]])[0][0], word_))
+                sim.append((cosine_similarity([wv_model.wv[word]], [wv_model.wv[word2]])[0][0], word2))
+                
+                
             largest = nlargest(10, sim)
             w2vList[word] = {x[1]: x[0] for x in largest}
 
@@ -78,7 +85,7 @@ def stats(query_relevance, retrieval_results):
     avg_ndcg = sum(ndcg_values) / len(ndcg_values)
     return avg_map, avg_ndcg
 
-for corp in ["adventure", "romance"]:
+for corp in ["news", "science_fiction"]:
     print("tfidf", corp)
     simlex_relevance = {term: {word: 1 for word in words} for term, words in simDict.items()}
     retrieval_results = tfidf10(simlex_relevance, brown.words(categories=[corp]))
