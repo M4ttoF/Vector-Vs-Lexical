@@ -1,5 +1,3 @@
-# Matthew Farias
-
 import nltk
 from nltk.corpus import brown
 from nltk.tokenize import word_tokenize
@@ -11,10 +9,9 @@ from gensim.models import Word2Vec
 import pytrec_eval
 from heapq import nlargest
 
-
 # Downloading corpus
 nltk.download('brown')
-
+nltk.download('punkt')
 # Get 10 most similar words with tf-idf
 def tfidf10(term, corpus):
     vectorizer = TfidfVectorizer()
@@ -38,9 +35,8 @@ def tfidf10(term, corpus):
 
     return tfidfList
 
-# Get 10 most similar with
+# Get 10 most similar with Word2Vec
 def w2v(vocab, corpus, vecSize, window):
-    
     tok_corpus = [word_tokenize(s.lower()) for s in corpus]  # Tokenize and lowercase
     wv_model = Word2Vec(sentences=tok_corpus, vector_size=vecSize, window=window, min_count=1, epochs=2000, workers=10)
 
@@ -58,8 +54,7 @@ def w2v(vocab, corpus, vecSize, window):
 
     return w2vList
 
-
-# Getting top 10 similar from simlex
+# Getting top 10 similar from SimLex-999
 simDict = {}
 with open('SimLex-999.txt', 'r') as f:
     next(f)  # Skip the header line
@@ -73,33 +68,23 @@ with open('SimLex-999.txt', 'r') as f:
         simDict[word1][word2] = float(similarity)
         simDict[word2][word1] = float(similarity)
 
-simlex10={}
-for word in simDict:
-    simlex10[word]= nlargest(10, simDict[word].items(), key=lambda x: x[1])
-
-
-
-from statistics import mean
-
-def stats(query, relevance_results):
-    mapScores = [result["map"] for result in relevance_results.values()]
-    ndcgScores = [result["ndcg"] for result in relevance_results.values()]
-    
-    mapAvg = mean(mapScores)
-    ndgcAvg = mean(ndcgScores)
-    
-    return mapAvg, ndgcAvg
-
-
-
-
+# Function to compute average MAP and nDCG
+def stats(query_relevance, retrieval_results):
+    evaluator = pytrec_eval.RelevanceEvaluator(query_relevance, {'map', 'ndcg'})
+    evaluation_results = evaluator.evaluate(retrieval_results)
+    map_values = [query_result['map'] for query_result in evaluation_results.values()]
+    ndcg_values = [query_result['ndcg'] for query_result in evaluation_results.values()]
+    avg_map = sum(map_values) / len(map_values)
+    avg_ndcg = sum(ndcg_values) / len(ndcg_values)
+    return avg_map, avg_ndcg
 
 for corp in ["adventure", "romance"]:
-   print("tfidf", corp)
-   print(stats(simlex10, tfidf10(simlex10, brown.words(categories=[corp]))))
-   for vSize in (10,50,100,300):
-       for wSize in (1,2,5,10):
-        print("word2vec", corp, "vector size: ", vSize, ", window size: ", wSize)
-        print(stats(simlex10, w2v(simlex10, brown.words(categories=[corp]), vSize, wSize)))
-
-
+    print("tfidf", corp)
+    simlex_relevance = {term: {word: 1 for word in words} for term, words in simDict.items()}
+    retrieval_results = tfidf10(simlex_relevance, brown.words(categories=[corp]))
+    print(stats(simlex_relevance, retrieval_results))
+    for vSize in (10,50,100,300):
+        for wSize in (1,2,5,10):
+            print("word2vec", corp, "vector size: ", vSize, ", window size: ", wSize)
+            retrieval_results = w2v(simlex_relevance, brown.words(categories=[corp]), vSize, wSize)
+            print(stats(simlex_relevance, retrieval_results))
