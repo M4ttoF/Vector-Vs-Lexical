@@ -90,8 +90,12 @@ for corp in ["news", "science_fiction"]:
     simlex_relevance = {term: {word: 1 for word in words} for term, words in simDict.items()}
     retrieval_results = tfidf10(simlex_relevance, brown.words(categories=[corp]))
     print(stats(simlex_relevance, retrieval_results))
-    for vSize in (10,50,100,300):
-        for wSize in (1,2,5,10):
+    for vSize in (10,20,30):
+        for wSize in (1,2,5):
             print("word2vec", corp, "vector size: ", vSize, ", window size: ", wSize)
-            retrieval_results = w2v(simlex_relevance, brown.words(categories=[corp]), vSize, wSize)
-            print(stats(simlex_relevance, retrieval_results))
+            try:
+                retrieval_results = w2v(simlex_relevance, brown.words(categories=[corp]), vSize, wSize)
+                print(stats(simlex_relevance, retrieval_results))
+            except Exception as e:
+                print('Error:',e)
+
